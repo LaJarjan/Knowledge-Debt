@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-debt"
+version = "0.1.0"
+description = "Two-minute, code-grounded understanding checks for the code you maintain."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "LaJarjan"}]
+keywords = ["developer-tools", "git", "code-review", "learning", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://github.com/LaJarjan/Knowledge-Debt"
+Issues = "https://github.com/LaJarjan/Knowledge-Debt/issues"
+
+[project.scripts]
+kdebt = "kdebt.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
