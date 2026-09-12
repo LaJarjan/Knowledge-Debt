@@ -14,7 +14,7 @@ Example request: “Use Knowledge Debt to ask me one question about my current c
 kdebt drill --since HEAD --json
 ```
 
-Returns `schema_version: 1`, a `drill` object (or null) and warnings. The object
+Returns `schema_version: 2`, a `drill` object (or null) and warnings. The object
 contains `id`, `fingerprint`, `path`, `symbol`, `question`, `facts`, `caveat`, priority
 and evidence state. Ask the question before displaying the checklist. Point to the
 source location. Translating the question is fine; inventing new required facts is not.
@@ -37,11 +37,17 @@ Use structured subprocess argument arrays or correct shell quoting when passing
 answers. Do not interpolate untrusted answers into shell code.
 
 The result identifies `user_self_report` provenance and `automatically_graded: false`.
+`partial` means only part of the checklist was checked; `self_checked` requires
+all listed facts. Neither proves reasoning or mastery. Old answers are retained,
+but the new analyzer fingerprint invalidates surviving v0.1.0 concept records.
 Do not turn that into an automated grade. If the user asks for an explanation,
 provide one, but do not save your explanation as their answer. Only the user may
 confirm which facts their original answer covered.
 
 ## Errors and privacy
+
+`kdebt drill PATH --show-facts` displays the source checklist without recording
+evidence. Use it when the user wants to read the facts instead of answering.
 
 - Exit 0: successful operation, including no supported candidates.
 - Exit 2: invalid arguments, Git/config/state error or rejected evidence binding.

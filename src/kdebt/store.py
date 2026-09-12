@@ -17,7 +17,10 @@ class Store:
 
     def initialize(self):
         self.directory.mkdir(exist_ok=True)
-        (self.directory / ".gitignore").write_text("*\n", encoding="utf-8")
+        ignore = self.directory / ".gitignore"
+        if ignore.is_symlink():
+            raise RepoError("Knowledge Debt ignore file must not be symlinked")
+        ignore.write_text("*\n", encoding="utf-8")
         with closing(sqlite3.connect(self.path)) as connection, connection:
             connection.execute("""CREATE TABLE IF NOT EXISTS evidence (
                 id INTEGER PRIMARY KEY, concept_id TEXT NOT NULL,
@@ -25,23 +28,48 @@ class Store:
                 covered TEXT NOT NULL, created_at TEXT NOT NULL,
                 head TEXT, provenance TEXT NOT NULL
             )""")
+            connection.execute("CREATE INDEX IF NOT EXISTS evidence_concept_id ON evidence(concept_id, id)")
 
     def latest(self, concept_id):
+        return self.latest_all().get(concept_id)
+
+    def latest_all(self):
+        """One connection/query per scan, including old v0.1.0 databases."""
         if not self.path.exists():
-            return None
-        with closing(sqlite3.connect(f"{self.path.as_uri()}?mode=ro", uri=True)) as connection:
-            connection.row_factory = sqlite3.Row
-            row = connection.execute("SELECT * FROM evidence WHERE concept_id = ? ORDER BY id DESC LIMIT 1",
-                                     (concept_id,)).fetchone()
-        return dict(row) if row else None
+            return {}
+        try:
+            with closing(sqlite3.connect(f"{self.path.as_uri()}?mode=ro", uri=True)) as connection:
+                connection.row_factory = sqlite3.Row
+                rows = connection.execute("SELECT e.* FROM evidence e JOIN "
+                                          "(SELECT MAX(id) AS id FROM evidence GROUP BY concept_id) latest "
+                                          "ON latest.id = e.id").fetchall()
+            return {row["concept_id"]: dict(row) for row in rows}
+        except sqlite3.Error as exc:
+            raise RepoError("Cannot read .kdebt/evidence.sqlite3. Back up the file before recovery; "
+                            "no records were changed.") from exc
 
     def state(self, concept):
-        latest = self.latest(concept.id)
+        return self.state_from_record(concept, self.latest(concept.id))
+
+    @staticmethod
+    def state_from_record(concept, latest):
         if latest is None:
             return "unrecorded"
         if latest["fingerprint"] != concept.fingerprint:
             return "stale"
-        return "self_checked" if json.loads(latest["covered"]) else "answer_recorded"
+        try:
+            covered = json.loads(latest["covered"])
+            if not isinstance(covered, list) or not all(isinstance(f, str) for f in covered):
+                raise ValueError("Invalid fact IDs")
+            covered = set(covered)
+            allowed = {fact.id for fact in concept.facts}
+            if not covered <= allowed:
+                raise ValueError("Unknown stored fact IDs")
+        except (TypeError, ValueError) as exc:
+            raise RepoError("Invalid stored fact coverage; back up .kdebt/evidence.sqlite3 before recovery") from exc
+        if not covered:
+            return "answer_recorded"
+        return "self_checked" if covered == allowed else "partial"
 
     def save(self, concept, answer, covered, head):
         allowed = {f.id for f in concept.facts}

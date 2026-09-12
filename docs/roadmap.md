@@ -1,6 +1,6 @@
 # Roadmap
 
-## v0.1 — Current, local alpha
+## v0.1.1 — Current, local alpha
 
 - [x] Four commands: init, scan, explain, drill.
 - [x] Git baseline → working-tree concept comparison.
@@ -9,6 +9,11 @@
 - [x] Function/context fingerprint invalidation.
 - [x] JSON interface and portable Agent Skill source.
 - [x] English and Chinese onboarding, automated test suite and CI configuration.
+- [x] Same-file dependency and class-header fingerprint invalidation.
+- [x] Common import aliases, shadowing abstention and narrower retry recognition.
+- [x] Partial/complete self-check states, drill rotation and facts-only viewing.
+- [x] 24-case synthetic corpus, interactive regressions and scale benchmark script.
+- [x] One evidence read per scan and unchanged-file filtering for baseline scans.
 
 ## Validate before adding integrations
 
@@ -24,12 +29,11 @@ just shown; test transfer with a different behavior-prediction question later.
 
 ## Next, driven by observed failures
 
-- Resolve common imported aliases and annotate confidence of source facts.
+- Expand lexical resolution only with new counterexamples and clear boundaries.
 - Cover context-manager cleanup and more realistic retry control flow.
 - Improve identity under moves and repeated same-kind instances.
 - Track relevant cross-file dependencies, with conservative invalidation.
-- Separate partial and complete fact coverage in ranking.
-- Offer evidence history/export locally and improve drill rotation.
+- Offer evidence history/export locally and evaluate the current drill rotation.
 - Consider optional claim matching with source citations, abstention and a
   measured evaluation set. Keep machine assessments distinct from self-reports.
 

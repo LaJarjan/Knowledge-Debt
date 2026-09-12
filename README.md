@@ -13,7 +13,8 @@ $ kdebt scan examples
 Knowledge Debt / Knowledge-Debt
 
 Analyzed: 1 Python files; 3 supported instances
-Current self-checks: 0 / 3
+Complete fact self-checks: 0 / 3
+Partial fact self-checks: 0
 Changed since recorded answer: 0
 
 Check priority (not an understanding score)
@@ -28,9 +29,10 @@ $ kdebt drill examples/worker.py
 
 Two-minute handoff / examples/worker.py:7
 
-In fetch_batch, what value is passed to asyncio.Semaphore,
-and where is this object acquired and released? Does this
-snippet establish a limit across separate calls to this function?
+In fetch_batch, where is this semaphore constructed and what
+initial value is supplied? Identify matching with/acquire/release
+syntax in this function's direct body. What remains unknown
+about uses outside that body?
 ```
 
 **Authorship is not understanding. Missing evidence is not proof of ignorance.**
@@ -63,30 +65,34 @@ kdebt scan --since HEAD            # staged + unstaged + untracked changes
 kdebt scan --since HEAD~3          # changes since a historical commit
 kdebt explain src/worker.py        # reasons, source facts and limits
 kdebt drill src/worker.py          # one question, then a self-check
+kdebt drill src/worker.py --show-facts  # read the checklist; record nothing
 ```
 
 `kdebt` with no command is `kdebt scan`. Use `kdebt --repo /path/to/repo scan`
 from another directory. Scope and file arguments are relative to the repository
 root, even when invoked from a subdirectory. Repeat `--scope` for multiple areas.
 
-## What v0.1 actually does
+## What v0.1.1 actually does
 
 - Reads Python files known to Git plus non-ignored untracked Python files.
-- Recognizes three bounded **syntax candidates**: semaphore construction,
-  retry-shaped loops, and cleanup calls in `finally`.
+- Recognizes three bounded **syntax candidates**: imported asyncio/threading
+  semaphore construction, counted retry-shaped loops, and cleanup calls in `finally`.
+- Resolves common import aliases, abstains on shadowed/custom semaphore names,
+  and requires a known delay inside a retry handler plus a try-body exit.
 - Links every checklist fact to a source location and expression.
 - Compares supported instances against a Git baseline with `--since`.
 - Asks one code-specific question. You answer **before** seeing the fact checklist.
 - Saves your answer and explicitly self-checked facts in local SQLite.
-- Marks a record stale when its function's normalized syntax or tracked
-  declaration context changes. Comments and formatting alone do not invalidate it.
+- Marks a record stale when its function, transitively referenced same-file
+  definitions, or enclosing class/declaration context changes. Comments and
+  formatting alone do not invalidate it.
 - Provides JSON contracts for Agent Skills and future editor integrations.
 
 ### A self-check, not an automated grade
 
 After answering, you see a few literal source facts and the limits of what they
 establish. You choose which facts your original answer covered. A count such as
-`2/3 self-checked source facts` is **your self-report**. Causal reasoning, runtime
+`2/4 self-checked source facts` is **your self-report**. Causal reasoning, runtime
 behavior, and long-term retention remain unverified.
 
 No lexical keyword matching pretends to understand your answer. An explanation
@@ -96,27 +102,30 @@ written by an agent must not be saved as your own evidence.
 | --- | --- |
 | `unrecorded` | No answer here; your understanding is unknown |
 | `answer_recorded` | An answer exists without an explicit fact self-check |
-| `self_checked` | You checked at least one fact against this code fingerprint |
+| `partial` | You checked some, but not all, facts for this fingerprint |
+| `self_checked` | You checked every listed source fact; this is not proof of mastery |
 | `stale` | The source fingerprint changed after the latest answer |
 
 ### How candidates are ordered
 
 | Priority | Rule |
 | --- | --- |
-| HIGH | A recorded answer is stale, or a concept changed/was added relative to `--since` without a current self-check |
-| MEDIUM | No self-check exists and no explicit baseline change elevates it |
-| LOW | At least one fact has a current self-check |
+| HIGH | A recorded answer is stale, or a concept changed/was added relative to `--since` without a complete current fact self-check |
+| MEDIUM | The checklist is incomplete and no explicit baseline change elevates it |
+| LOW | All listed facts have a current self-check |
 
-Ties sort by path, line and concept kind. These are deterministic review priorities,
-not calibrated risk probabilities. A partial self-check lowering priority is an
-explicit v0.1 simplification, not evidence of complete understanding.
+Ties prioritize never-recorded instances, then the oldest latest answer, then path,
+line and kind. Repeated drills rotate as you record answers. These are deterministic
+review priorities, not calibrated risk probabilities. Partial answers are not
+silently combined into a complete self-check; the latest answer defines the state.
 
 ## Boundaries
 
 This is an **alpha with deliberately narrow recognition**, not a complete Python
-semantic analyzer. It does not resolve arbitrary aliases, build a call graph,
-detect all retries, prove cleanup, or infer why an author chose a limit. A method
-named `Semaphore` could be a custom callable; candidates say so.
+semantic analyzer. It resolves a bounded set of lexical imports, not runtime object
+identity or monkey-patching. It does not build a complete call graph, detect all
+retries, prove cleanup, or infer why an author chose a limit. Unknown/custom
+semaphore names are skipped. Some genuine retries are deliberately not recognized.
 
 - Unsupported files and concepts do not count as understood.
 - `--since` compares a baseline to the working tree, not just committed changes.
@@ -149,6 +158,11 @@ CLI JSON, that Agent's own data handling applies; JSON includes source expressio
 
 ## Agent workflow
 
+v0.1.1 emits JSON `schema_version: 2` with a new `partial` state. Existing local
+databases remain readable and answers are preserved. The analyzer fingerprint
+version changed: surviving v0.1.0 instances require a new check rather than
+silently applying old fact IDs to the expanded checklist.
+
 The repository includes [a portable Skill](skills/knowledge-debt/SKILL.md).
 Keep the deterministic engine responsible for facts and storage; use your coding
 assistant for the conversation. The Skill is a source artifact, not an automatically
@@ -170,6 +184,9 @@ python -m unittest discover -s tests -v
 ```
 
 CI is configured to run tests on Linux, Windows and macOS with Python 3.10 and 3.13.
+The suite includes a 24-case synthetic recognition corpus and interactive drill
+regressions. See [validation and benchmarking](docs/validation.md) for limits and
+the remaining real-user evaluation work.
 
 MIT licensed. Built around one question: **can you confidently take responsibility
 for the code you just changed?**

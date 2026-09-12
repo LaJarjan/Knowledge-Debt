@@ -25,6 +25,11 @@ do not fabricate a report. This Skill does not install software on its own.
 6. Describe the result as a version-bound user self-report, never an automated
    understanding score. A stale-fingerprint error requires a fresh question.
 
+JSON schema version 2 distinguishes `partial` from `self_checked` (all listed
+facts checked). Neither proves mastery. For a facts-only explanation, use
+`kdebt drill PATH --show-facts`; this records no evidence. If every candidate has
+a check, the CLI prioritizes older answers within the same priority level.
+
 Do not answer on the user's behalf, infer self-checks from politeness, modify their
 code to make the answer true, send answers to teammates, or upload the local database.
 If additional reasoning is offered, distinguish it from source facts and do not

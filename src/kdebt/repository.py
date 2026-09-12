@@ -77,6 +77,12 @@ class Repository:
         with tokenize.open(target) as stream:
             return stream.read()
 
+    def changed_files(self, baseline):
+        changed = self.git("diff", "--no-ext-diff", "--no-textconv", "--no-renames",
+                           "--name-only", "-z", baseline, "--")
+        untracked = self.git("ls-files", "--others", "--exclude-standard", "-z")
+        return set(changed.split("\0")) | set(untracked.split("\0"))
+
     def at_revision(self, revision: str, path: str) -> str | None:
         raw = self.git("show", f"{revision}:{path}", binary=True, allow_failure=True)
         if raw is None:

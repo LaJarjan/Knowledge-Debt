@@ -1,7 +1,6 @@
 import contextlib
 import io
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -54,7 +53,7 @@ class AnalyzerTests(unittest.TestCase):
         self.assertNotEqual(original.fingerprint, changed.fingerprint)
 
     def test_nested_constructor_not_attributed_to_outer(self):
-        source = "def outer():\n    def inner():\n        gate = Semaphore(2)\n"
+        source = "from asyncio import Semaphore\ndef outer():\n    def inner():\n        gate = Semaphore(2)\n"
         concepts = extract(source, "a.py")
         self.assertEqual([c.symbol for c in concepts], ["outer.inner"])
 
@@ -65,7 +64,7 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(extract("def add(a, b): return a + b", "a.py"), [])
 
 
-class RepositoryTests(unittest.TestCase):
+class RepositoryFixture:
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
@@ -94,6 +93,8 @@ class RepositoryTests(unittest.TestCase):
             code = main(["--repo", str(self.root), *args])
         return code, out.getvalue()
 
+
+class RepositoryTests(RepositoryFixture, unittest.TestCase):
     def test_unborn_repo_and_no_state_mutation_on_scan(self):
         report = scan(self.repo)
         self.assertIsNone(report["head"])
@@ -126,7 +127,7 @@ class RepositoryTests(unittest.TestCase):
     def test_answers_are_private_and_stale_after_change(self):
         concept = concept_from_dict(scan(self.repo)["concepts"][0])
         store = Store(self.root)
-        store.save(concept, "Four permits per local object", ["f1", "f2"], None)
+        store.save(concept, "Four permits per local object", [fact.id for fact in concept.facts], None)
         self.assertEqual(store.state(concept), "self_checked")
         ignored = self.git("check-ignore", ".kdebt/evidence.sqlite3").decode()
         self.assertIn("evidence.sqlite3", ignored)

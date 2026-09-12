@@ -1,7 +1,5 @@
 """Deterministic ranking and reports, independent of terminal presentation."""
 
-import ast
-
 from .analyzer import extract
 from .repository import RepoError
 from .store import Store
@@ -17,6 +15,7 @@ def scan(repo, since=None, path=None):
         scopes = [requested]
     baseline = repo.revision(since) if since else None
     store = Store(repo.root)
+    records = store.latest_all()
     items, warnings, removed = [], [], []
     analyzed = 0
     files = repo.files(scopes)
@@ -27,6 +26,8 @@ def scan(repo, since=None, path=None):
         files = sorted(set(files) | {p for p in old_files if p.endswith(".py")
                        and any(s == "." or p == s or p.startswith(s + "/") for s in normalized)
                        and not any(part in p.split("/") for part in (".venv", "venv", ".kdebt", "node_modules"))})
+        touched = repo.changed_files(baseline)
+        files = [file for file in files if file in touched]
     for file in files:
         try:
             source = repo.read(file) if (repo.root / file).exists() else None
@@ -47,7 +48,8 @@ def scan(repo, since=None, path=None):
                           else "unchanged") if baseline else "not_compared"
                 if baseline and change == "unchanged":
                     continue
-                state = store.state(concept)
+                record = records.get(concept.id)
+                state = store.state_from_record(concept, record)
                 reasons = []
                 if change in ("added", "changed"):
                     reasons.append(f"Supported concept {change} relative to {since}.")
@@ -57,19 +59,23 @@ def scan(repo, since=None, path=None):
                     reasons.append("No answer recorded here; your understanding is unknown.")
                 elif state == "answer_recorded":
                     reasons.append("An answer exists, without a self-check against the source facts.")
+                elif state == "partial":
+                    reasons.append("Only part of the source checklist was self-checked; this is still worth reviewing.")
                 else:
-                    reasons.append("You self-checked at least one fact for this code fingerprint.")
+                    reasons.append("You self-checked all source facts for this fingerprint; reasoning remains unverified.")
                 priority = ("HIGH" if state == "stale" or (change in ("added", "changed") and state != "self_checked")
                             else "LOW" if state == "self_checked" else "MEDIUM")
                 item = concept.to_dict()
-                item.update(state=state, priority=priority, reasons=reasons, change=change)
+                item.update(state=state, priority=priority, reasons=reasons, change=change,
+                            last_recorded_id=record["id"] if record else None)
                 items.append(item)
         except (SyntaxError, UnicodeError, OSError, RepoError) as exc:
             warnings.append({"path": file, "reason": str(exc)})
-    items.sort(key=lambda c: ({"HIGH": 0, "MEDIUM": 1, "LOW": 2}[c["priority"]], c["path"], c["line"], c["kind"]))
+    items.sort(key=lambda c: ({"HIGH": 0, "MEDIUM": 1, "LOW": 2}[c["priority"]],
+                             c["last_recorded_id"] or 0, c["path"], c["line"], c["kind"]))
     states = {state: sum(c["state"] == state for c in items)
-              for state in ("unrecorded", "answer_recorded", "self_checked", "stale")}
-    return {"schema_version": 1, "repository": repo.root.name, "head": repo.head(),
+              for state in ("unrecorded", "answer_recorded", "partial", "self_checked", "stale")}
+    return {"schema_version": 2, "repository": repo.root.name, "head": repo.head(),
             "baseline": baseline, "scopes": scopes, "analyzed_files": analyzed,
             "candidate_files": len(files), "supported_instances": len(items),
             "states": states, "concepts": items, "removed": removed, "warnings": warnings,

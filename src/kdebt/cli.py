@@ -35,6 +35,7 @@ def parser():
         if command == "scan":
             child.add_argument("--limit", type=positive, default=5)
         if command == "drill":
+            child.add_argument("--show-facts", action="store_true", help="show the checklist without recording evidence")
             child.add_argument("--id", help="choose the stable concept ID from scan --json")
             child.add_argument("--answer", help="record the user's answer without automatic grading")
             child.add_argument("--covered", action="append", default=[], metavar="FACT_ID",
@@ -68,7 +69,17 @@ def run(args):
         print("Answers stay in .kdebt/ and are ignored by Git. No understanding checks recorded yet.")
         return 0
 
+    if args.command == "drill":
+        if args.covered and args.answer is None:
+            raise RepoError("--covered requires --answer")
+        if args.answer is not None and (not args.id or not args.fingerprint):
+            raise RepoError("Recording requires --id and --fingerprint from the displayed drill")
+        if args.show_facts and args.answer is not None:
+            raise RepoError("--show-facts cannot record an answer")
     report = scan(repo, args.since, args.path)
+    if not args.json:
+        for warning in report["warnings"]:
+            print(f"Warning: {warning['path']}: {warning['reason']}", file=sys.stderr)
     if args.command == "scan":
         if args.json:
             # JSON intentionally contains every candidate, independent of display limit.
@@ -76,7 +87,8 @@ def run(args):
             return 0
         print(f"Knowledge Debt / {report['repository']}\n")
         print(f"Analyzed: {report['analyzed_files']} Python files; {report['supported_instances']} supported instances")
-        print(f"Current self-checks: {report['states']['self_checked']} / {report['supported_instances']}")
+        print(f"Complete fact self-checks: {report['states']['self_checked']} / {report['supported_instances']}")
+        print(f"Partial fact self-checks: {report['states']['partial']}")
         print(f"Changed since recorded answer: {report['states']['stale']}")
         if args.since:
             print(f"Scope: changes from {args.since} to working tree; removed instances: {len(report['removed'])}")
@@ -99,27 +111,24 @@ def run(args):
         if not report["concepts"]:
             print("No supported candidates. Try another path or omit --since.")
     else:
-        if args.covered and args.answer is None:
-            raise RepoError("--covered requires --answer")
         candidates = [c for c in report["concepts"] if not args.id or c["id"] == args.id]
         if not candidates:
             if args.id:
                 raise RepoError("Concept ID not found in this scope; rescan before answering")
             if args.json:
-                emit({"schema_version": 1, "drill": None, "warnings": report["warnings"]})
+                emit({"schema_version": 2, "drill": None, "warnings": report["warnings"]})
             else:
                 print("No supported drill in this scope. Nothing has been graded.")
             return 0
         item = candidates[0]
         concept = concept_from_dict(item)
         if args.answer is not None:
-            if not args.id or not args.fingerprint:
-                raise RepoError("Recording requires --id and --fingerprint from the displayed drill")
             if args.fingerprint != concept.fingerprint:
                 raise RepoError("Code changed since the question was displayed; request a fresh drill")
-            Store(repo.root).save(concept, args.answer, args.covered, repo.head())
-            result = {"schema_version": 1, "concept_id": concept.id,
-                      "state": "self_checked" if args.covered else "answer_recorded",
+            store = Store(repo.root)
+            store.save(concept, args.answer, args.covered, repo.head())
+            result = {"schema_version": 2, "concept_id": concept.id,
+                      "state": store.state(concept),
                       "self_checked_facts": len(set(args.covered)), "total_facts": len(concept.facts),
                       "provenance": "user_self_report", "automatically_graded": False}
             if args.json:
@@ -129,10 +138,14 @@ def run(args):
                 print("This is your self-report, not an automatic assessment of mastery.")
             return 0
         if args.json:
-            emit({"schema_version": 1, "drill": item, "warnings": report["warnings"]})
+            emit({"schema_version": 2, "drill": item, "warnings": report["warnings"]})
             return 0
         print(f"Two-minute handoff / {item['path']}:{item['line']}\n")
         print(item["question"])
+        if args.show_facts:
+            show_facts(item)
+            print("\nChecklist shown. No understanding evidence recorded.")
+            return 0
         if not sys.stdin.isatty():
             print("\nRun interactively to answer, or use --json for the integration contract.")
             return 0
@@ -152,8 +165,6 @@ def run(args):
         Store(repo.root).save(concept, answer, covered, repo.head())
         print(f"\nRecorded {len(set(covered))}/{len(concept.facts)} self-checked source facts.")
         print("No automatic grade. Reasoning beyond these facts remains unverified.")
-    for warning in report["warnings"]:
-        print(f"Warning: {warning['path']}: {warning['reason']}", file=sys.stderr)
     return 0
 
 
@@ -166,7 +177,7 @@ def main(argv=None):
         return run(args)
     except (RepoError, OSError, sqlite3.Error, ValueError) as exc:
         if getattr(args, "json", False):
-            emit({"schema_version": 1, "error": str(exc)})
+            emit({"schema_version": 2, "error": str(exc)})
         else:
             print(f"kdebt: {exc}", file=sys.stderr)
         return 2
