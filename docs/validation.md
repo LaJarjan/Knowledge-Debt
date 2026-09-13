@@ -5,6 +5,7 @@
 ```bash
 python -m unittest discover -s tests -v
 python scripts/benchmark.py --files 100 500
+python scripts/demo_brief.py --output docs/demo --lang zh
 ```
 
 The test suite covers source facts, conservative lexical import resolution,
@@ -18,6 +19,12 @@ negative examples. These validate recognition boundaries, not production accurac
 or learning outcomes. They are regression fixtures, not an independent benchmark.
 
 ## Local performance observation
+
+The v0.2 guide tests additionally cover historical targets, source changes during
+generation, previous-guide invalidation, parse-failure retention, immutable
+generations, interrupted publication and escaped repository content. Browser QA
+checks the synthetic guide at 1280px and 390px widths, source disclosures and zero
+external HTTP requests. This does not establish real-maintainer usefulness.
 
 One run on Windows with Python 3.12.14 produced:
 

@@ -1,4 +1,4 @@
-"""Four commands. No account, model API or repository code execution."""
+"""Local handoff guides and understanding checks, without executing source."""
 
 import argparse
 import json
@@ -25,6 +25,12 @@ def parser():
     commands = root.add_subparsers(dest="command")
     init = commands.add_parser("init", help="set local responsibility scope")
     init.add_argument("--scope", action="append", help="repository-relative directory or file; repeatable")
+    brief = commands.add_parser("brief", help="generate a versioned HTML and Markdown code handoff")
+    brief.add_argument("path", nargs="?", help="repository-relative responsibility scope")
+    brief.add_argument("--base", default="HEAD", help="baseline Git commit (default: HEAD)")
+    brief.add_argument("--head", help="target commit; omit to capture the working tree")
+    brief.add_argument("--lang", choices=("en", "zh"), default="en", help="guide language; source facts stay literal")
+    brief.add_argument("--json", action="store_true", help="output artifact paths and generation metadata")
     for command, help_text in (("scan", "rank supported code concepts"),
                                ("explain", "show code facts and ranking reasons"),
                                ("drill", "ask one code-grounded question")):
@@ -56,6 +62,21 @@ def show_facts(item):
 
 def run(args):
     repo = Repository(args.repo)
+    if args.command == "brief":
+        from .brief import build
+        result = build(repo, base=args.base, head=args.head, path=args.path, lang=args.lang)
+        if args.json:
+            emit(result)
+        else:
+            print("Code handoff ready / local facts edition")
+            print(f"HTML: {result['html']}")
+            print(f"Markdown: {result['markdown']}")
+            print(f"Changed files: {result['summary']['changed_files']}; supported behaviors: {result['summary']['current_behaviors']}")
+            print(f"Explanations to recheck since the last guide: {result['summary']['needs_review']}")
+            print("Open the HTML file in your browser. No understanding evidence was recorded.")
+            for warning in result["warnings"]:
+                print(f"Warning: {warning['path']}: {warning['reason']}", file=sys.stderr)
+        return 0
     if args.command == "init":
         store = Store(repo.root)
         config_path = store.directory / "config.json"

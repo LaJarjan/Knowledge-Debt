@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+- Add `brief`: local HTML, Markdown and structured handoff guides for working-tree
+  or committed Git changes, with English/Chinese presentation.
+- Present source-linked behavior cards, baseline and previous-guide facts,
+  general maintenance guidance and explicit unknowns.
+- Capture and revalidate working-tree input; retain source-bound guide generations
+  and atomically publish the latest pointer.
+- Track explanations needing review, unchanged/new/removed behavior and analysis
+  failures without treating unreadable source as removal or reading as learning.
+- Add a shareable synthetic demo, responsive layout and regression coverage.
+
+The analyzer fingerprint and evidence schema remain compatible with v0.1.1.
+Guides have `brief_format: 1`; CLI JSON remains schema 2. This is the offline facts
+edition, with no model calls, external assets or automatic source watching.
+
 ## 0.1.1
 
 - Invalidate evidence after referenced same-file helpers, class bases or decorators change.

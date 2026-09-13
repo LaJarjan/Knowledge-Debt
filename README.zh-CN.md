@@ -1,9 +1,33 @@
 # Knowledge Debt
 
-**代码变了。用两分钟，确认你接得住。**
+**AI 写完代码后，生成一份你能核对的接手指南。**
 
-Knowledge Debt 是一个本地 Python CLI：找出值得检查的代码行为，提出一个有源码依据的问题，
-并把你的自查结果与代码版本关联起来。
+Knowledge Debt 是一个本地 Python CLI：把一次代码改动整理成可阅读的 HTML / Markdown 接手指南，
+展示值得关注的行为、源码依据、维护注意事项和待确认问题，并在后续生成时提示哪些说明需要复核。
+
+## v0.2 新入口：代码接手指南
+
+```bash
+kdebt brief --base HEAD --lang zh
+kdebt brief src/cache --base HEAD --lang zh
+kdebt brief --base HEAD~2 --head HEAD --lang zh
+```
+
+打开命令输出的 HTML 路径即可阅读，不需要启动服务器。默认比较当前工作区与 HEAD，
+显式指定 `--head` 则比较两个提交，不受工作区未提交修改影响。
+
+![接手指南示例](docs/demo/preview.png)
+
+[示例 HTML](docs/demo/index.html) · [示例 Markdown](docs/demo/guide.md) · [使用与边界](docs/brief.md)
+
+示例来自合成代码，HTML 需要下载后用浏览器打开；GitHub 文件页只显示源码。
+指南包含行为卡片、可展开的源码、前后事实对照、一般维护建议和未知事项。
+
+每次生成会在 `.kdebt/briefs/` 保存独立快照。再次运行时，对说明标记未变化、新增、需要复核、
+已移除或无法验证。代码变化后需要重新运行命令，当前没有自动监视器。
+
+这是**离线事实版**：没有调用 LLM，事实保留分析器的英文原文；中文页面提供中文标题和维护说明。
+不会猜测完整调用链或业务目的。阅读不计为已理解；模型解释扩展尚未实现。
 
 [English](README.md) · [设计](docs/design.md) · [Agent 接入](docs/agent-integration.md) · [路线图](docs/roadmap.md)
 
@@ -54,7 +78,7 @@ kdebt drill src/worker.py --show-facts  # 直接看事实，不记为理解证�
 - 每个事实带行号和源码表达式。
 - 单题交接、自查清单、SQLite 本地回答记录。
 - 函数、同文件依赖、类继承或装饰器变化后提醒重新检查，注释和格式化不使记录失效。
-- JSON 输出和仓库内 Agent Skill，便于以后接 IDE 插件。
+- HTML / Markdown 接手指南、历史快照、JSON 输出和仓库内 Agent Skill。
 
 **暂未实现：**
 
@@ -90,6 +114,7 @@ v0.1.1 的 JSON 升级为 `schema_version: 2`，增加 `partial` 状态。旧数
 CLI 零第三方运行时依赖，无 API Key、网络请求和遥测，也不会执行被分析的代码。
 扫描不创建状态，初始化或回答后将记录存入 `.kdebt/`，目录自带 Git 忽略规则。
 记录没有加密，不要强制加入 Git 或放入公开压缩包。
+生成指南也会写入该目录，但不写入理解证据。指南含源码片段，分享前请自行检查；仓库公开的仅为合成示例。
 
 随仓库提供的 [Skill](skills/knowledge-debt/SKILL.md) 负责对话，CLI 负责分析和存储。
 它尚未自动安装。Agent 读取 JSON 后的数据处理遵循其自身规则，JSON 会包含源码表达式。

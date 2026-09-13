@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowledge-debt"
-version = "0.1.1"
-description = "Two-minute, code-grounded understanding checks for the code you maintain."
+version = "0.2.0"
+description = "Versioned, source-grounded code handoff guides for the code you maintain."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

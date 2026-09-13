@@ -1,6 +1,15 @@
 # Roadmap
 
-## v0.1.1 — Current, local alpha
+## v0.2.0 — Reading-first handoff guides
+
+- [x] `brief` for Git baseline → working tree or explicit commit target.
+- [x] Standalone HTML, Markdown, source facts and before/after disclosures.
+- [x] Private versioned guides with recheck and unverified states.
+- [x] English/Chinese presentation and a synthetic public example.
+- [ ] Optional model explanations with explicit claim provenance.
+- [ ] Real-maintainer comparison against a one-off AI summary.
+
+## v0.1.1 — Existing understanding checks
 
 - [x] Four commands: init, scan, explain, drill.
 - [x] Git baseline → working-tree concept comparison.

@@ -10,6 +10,12 @@ The reusable product is **change → concept instance → question → evidence 
 revalidation**. The current distribution is a CLI plus a thin Agent Skill. An IDE
 entry point is contingent on repeat use; an independent desktop app is not planned.
 
+v0.2 adds a reading-first surface: `brief` produces a versioned handoff guide before
+asking the user to answer anything. The offline facts edition reuses existing
+recognizers and self-report records. Its persisted guide history is separate from
+understanding evidence. See [brief contracts](brief.md) for snapshot, rendering and
+publication behavior. No LLM explanation provider is implemented in this release.
+
 ## Architecture
 
 ```mermaid

@@ -1,9 +1,34 @@
 # Knowledge Debt
 
-**Your codebase changed. Take two minutes to catch up.**
+**AI finished the code. Get a guide you can take responsibility with.**
 
-Find a code behavior worth understanding, answer one question, and keep a local,
-version-bound record of what you checked.
+Knowledge Debt turns a Python code change into a local handoff guide: source-linked
+behaviors, maintenance considerations, before/after facts, and questions that still
+need an answer. Generate it again to see which explanations need rechecking.
+
+## New in v0.2: a code handoff you can read
+
+```bash
+kdebt brief --base HEAD                   # working tree vs HEAD
+kdebt brief src/cache --base HEAD --lang zh
+kdebt brief --base HEAD~2 --head HEAD      # two committed snapshots
+```
+
+Open the printed HTML path. Each run also writes Markdown and a structured
+manifest, privately inside `.kdebt/briefs/`. No account, model API, web server,
+or repository code execution. This is a **local facts edition**: maintenance
+advice is labelled as general guidance, not a verified explanation of author intent.
+
+![Code handoff guide — synthetic example](docs/demo/preview.png)
+
+[Example HTML source](docs/demo/index.html) · [Example Markdown](docs/demo/guide.md) · [Guide usage and limits](docs/brief.md)
+
+The example is generated from synthetic code. Download/open the HTML locally to
+use the source disclosures; GitHub's file view shows source.
+
+Subsequent runs distinguish unchanged explanations, new behaviors, behaviors
+needing review, removals, and source that could not be revalidated. Reading does
+not count as mastery. Optional understanding checks remain available:
 
 [中文说明](README.zh-CN.md) · [Design](docs/design.md) · [Agent integration](docs/agent-integration.md) · [Roadmap](docs/roadmap.md)
 
@@ -72,7 +97,7 @@ kdebt drill src/worker.py --show-facts  # read the checklist; record nothing
 from another directory. Scope and file arguments are relative to the repository
 root, even when invoked from a subdirectory. Repeat `--scope` for multiple areas.
 
-## What v0.1.1 actually does
+## Understanding checks retained from v0.1.1
 
 - Reads Python files known to Git plus non-ignored untracked Python files.
 - Recognizes three bounded **syntax candidates**: imported asyncio/threading
@@ -143,18 +168,22 @@ semaphore names are skipped. Some genuine retries are deliberately not recognize
 
 ## Local by default
 
-`scan` and `explain` do not create state. `init` or recording a drill creates:
+`scan` and `explain` do not create state. `init`, recording a drill, or generating a
+brief creates local state (a brief does not create an evidence database):
 
 ```text
 .kdebt/
   .gitignore         # ignores everything in this directory
   config.json        # optional responsibility scopes
   evidence.sqlite3   # answers, checked fact IDs, timestamps, code fingerprints
+  briefs/            # versioned guides and latest-generation pointers
 ```
 
 This directory is Git-ignored, **not encrypted**. Do not force-add it or include it
 in public archives. The CLI makes no network requests. If an external Agent reads
 CLI JSON, that Agent's own data handling applies; JSON includes source expressions.
+Generated briefs also contain source snippets; review them before sharing. Only
+the synthetic files under `docs/demo/` are intentionally public examples.
 
 ## Agent workflow
 
